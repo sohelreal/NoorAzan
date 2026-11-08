@@ -27,10 +27,14 @@ fun QiblaScreen() {
     var hasSensor by remember { mutableStateOf(true) }
     val bearing = PrayerCalc.qiblaBearing(Prefs.lat, Prefs.lon).toFloat()
 
+    var accuracy by remember { mutableIntStateOf(3) }
+
     DisposableEffect(Prefs.lat, Prefs.lon) {
         val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val sensor = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        if (sensor == null) {
+        val rv = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        val acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val mag = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        if (rv == null && (acc == null || mag == null)) {
             hasSensor = false
             onDispose { }
         } else {
@@ -38,27 +42,64 @@ fun QiblaScreen() {
             var smooth = 0f
             var first = true
             val rot = FloatArray(9)
+            val tmp = FloatArray(9)
             val ori = FloatArray(3)
+            val gravity = FloatArray(3)
+            val geo = FloatArray(3)
+            var haveG = false
+            var haveM = false
+
+            fun update() {
+                // Flat on a table: use the standard axes. Held upright: heading of the back of the phone.
+                val m = if (abs(rot[8]) > 0.6f) rot else {
+                    SensorManager.remapCoordinateSystem(rot, SensorManager.AXIS_X, SensorManager.AXIS_Z, tmp)
+                    tmp
+                }
+                SensorManager.getOrientation(m, ori)
+                val az = ((Math.toDegrees(ori[0].toDouble()).toFloat() + decl) + 360f) % 360f
+                if (first) {
+                    smooth = az
+                    first = false
+                } else {
+                    var d = az - smooth
+                    if (d > 180f) d -= 360f
+                    if (d < -180f) d += 360f
+                    smooth = (smooth + 0.2f * d + 360f) % 360f
+                }
+                azimuth = smooth
+            }
+
             val listener = object : SensorEventListener {
                 override fun onSensorChanged(e: SensorEvent) {
-                    SensorManager.getRotationMatrixFromVector(rot, e.values)
-                    SensorManager.getOrientation(rot, ori)
-                    val az = ((Math.toDegrees(ori[0].toDouble()).toFloat() + decl) + 360f) % 360f
-                    if (first) {
-                        smooth = az
-                        first = false
-                    } else {
-                        var d = az - smooth
-                        if (d > 180f) d -= 360f
-                        if (d < -180f) d += 360f
-                        smooth = (smooth + 0.15f * d + 360f) % 360f
+                    when (e.sensor.type) {
+                        Sensor.TYPE_ROTATION_VECTOR -> {
+                            SensorManager.getRotationMatrixFromVector(rot, e.values)
+                            update()
+                        }
+                        Sensor.TYPE_ACCELEROMETER -> {
+                            for (i in 0..2) gravity[i] = if (haveG) gravity[i] * 0.8f + e.values[i] * 0.2f else e.values[i]
+                            haveG = true
+                        }
+                        Sensor.TYPE_MAGNETIC_FIELD -> {
+                            for (i in 0..2) geo[i] = if (haveM) geo[i] * 0.8f + e.values[i] * 0.2f else e.values[i]
+                            haveM = true
+                        }
                     }
-                    azimuth = smooth
+                    if (rv == null && haveG && haveM && e.sensor.type != Sensor.TYPE_ACCELEROMETER) {
+                        if (SensorManager.getRotationMatrix(rot, null, gravity, geo)) update()
+                    }
                 }
 
-                override fun onAccuracyChanged(s: Sensor?, accuracy: Int) {}
+                override fun onAccuracyChanged(s: Sensor?, a: Int) {
+                    if (s?.type == Sensor.TYPE_ROTATION_VECTOR || s?.type == Sensor.TYPE_MAGNETIC_FIELD) accuracy = a
+                }
             }
-            sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
+            if (rv != null) {
+                sm.registerListener(listener, rv, SensorManager.SENSOR_DELAY_GAME)
+            } else {
+                sm.registerListener(listener, acc, SensorManager.SENSOR_DELAY_GAME)
+                sm.registerListener(listener, mag, SensorManager.SENSOR_DELAY_GAME)
+            }
             onDispose { sm.unregisterListener(listener) }
         }
     }
@@ -115,6 +156,10 @@ fun QiblaScreen() {
                     color = if (aligned) ring else textColor,
                     fontWeight = FontWeight.Bold
                 )
+            }
+            if (hasSensor && accuracy <= 1) {
+                Spacer(Modifier.height(8.dp))
+                Text(tr("calibrate"), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.height(12.dp))
             Text(tr("keep_flat"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
