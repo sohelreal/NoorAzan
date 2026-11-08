@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Noor" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/noor_green</item>
+        <item name="android:navigationBarColor">@color/noor_bg</item>
+        <item name="android:windowBackground">@color/noor_bg</item>
+    </style>
+</resources>
