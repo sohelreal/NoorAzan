@@ -25,6 +25,7 @@ class App : Application() {
     private fun prefetchAzan() {
         val dest = PlayerService.azanFile(this)
         if (dest.exists() && dest.length() > 1000) return
+        if (PlayerService.bundledAzan(this, 0) != 0) return // Azan is built into the app
         try {
             val c = java.net.URL(Prefs.azanUrl).openConnection() as java.net.HttpURLConnection
             c.connectTimeout = 15000

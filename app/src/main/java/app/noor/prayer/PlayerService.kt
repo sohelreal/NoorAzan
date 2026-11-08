@@ -118,13 +118,19 @@ class PlayerService : Service() {
         PlayerState.playing = false
         azanFallbackTried = false
         foreground(PlayerState.title, tr("prayer_times"), false)
-        val custom = azanFileFor(this, idx.coerceIn(0, 4))
-        val f = if (custom.exists() && custom.length() > 0) custom else azanFile(this)
-        if (f.exists() && f.length() > 0) prepare(null, f, true)
-        else prepare(Prefs.azanUrl, null, true)
+        val i = idx.coerceIn(0, 4)
+        val custom = azanFileFor(this, i)
+        val bundled = bundledAzan(this, i)
+        val def = azanFile(this)
+        when {
+            custom.exists() && custom.length() > 0 -> prepare(null, custom, true)   // user's file for this prayer
+            bundled != 0 -> prepare(null, null, true, bundled)                       // Azan built into the app (res/raw)
+            def.exists() && def.length() > 0 -> prepare(null, def, true)             // downloaded / chosen default
+            else -> prepare(Prefs.azanUrl, null, true)
+        }
     }
 
-    private fun prepare(url: String?, file: File?, alarm: Boolean) {
+    private fun prepare(url: String?, file: File?, alarm: Boolean, raw: Int = 0) {
         release()
         val gen = ++generation
         val p = MediaPlayer()
@@ -138,6 +144,7 @@ class PlayerService : Service() {
             )
             p.setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
             when {
+                raw != 0 -> resources.openRawResourceFd(raw).use { p.setDataSource(it.fileDescriptor, it.startOffset, it.length) }
                 file != null -> p.setDataSource(file.absolutePath)
                 url != null -> p.setDataSource(url)
                 else -> p.setDataSource(applicationContext, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
@@ -232,6 +239,18 @@ class PlayerService : Service() {
         const val ACTION_STOP = "app.noor.prayer.STOP"
         const val ACTION_SEEK = "app.noor.prayer.SEEK"
         private const val NOTIF_ID = 300
+
+        private val PRAYER_FILE = listOf("fajr", "dhuhr", "asr", "maghrib", "isha")
+
+        /**
+         * Azan audio built into the APK: res/raw/azan_fajr.mp3 ... azan_isha.mp3 per prayer, or res/raw/azan.mp3 for all.
+         * Returns the resource id, or 0 if none was bundled.
+         */
+        fun bundledAzan(ctx: Context, idx: Int): Int {
+            val r = ctx.resources
+            val specific = r.getIdentifier("azan_" + PRAYER_FILE[idx.coerceIn(0, 4)], "raw", ctx.packageName)
+            return if (specific != 0) specific else r.getIdentifier("azan", "raw", ctx.packageName)
+        }
 
         fun azanFile(ctx: Context) = File(ctx.filesDir, "azan.mp3")
 
