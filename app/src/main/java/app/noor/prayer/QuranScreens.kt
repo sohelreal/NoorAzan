@@ -123,6 +123,10 @@ fun SurahScreen(n: Int, onBack: () -> Unit) {
     }
 
     val current = PlayerState.kind == "quran" && PlayerState.surah == n
+    val scope = rememberCoroutineScope()
+    var saved by remember(n, Prefs.reciter) { mutableStateOf(QuranRepo.audioSaved(ctx, Prefs.reciter, n)) }
+    var savingPct by remember(n, Prefs.reciter) { mutableFloatStateOf(-1f) }
+    var saveFailed by remember(n, Prefs.reciter) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         Header(
@@ -158,6 +162,29 @@ fun SurahScreen(n: Int, onBack: () -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(mmss(if (seeking) seekVal.toInt() else PlayerState.pos), style = MaterialTheme.typography.bodySmall)
                     Text(mmss(PlayerState.dur), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                if (saved) {
+                    Text("✓ " + tr("audio_saved"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                } else if (savingPct >= 0f) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("saving") + " " + nd("${(savingPct * 100).toInt()}%"), style = MaterialTheme.typography.bodySmall)
+                        LinearProgressIndicator(progress = { savingPct }, modifier = Modifier.fillMaxWidth())
+                    }
+                } else {
+                    OutlinedButton(onClick = {
+                        saveFailed = false
+                        savingPct = 0f
+                        val rec = Prefs.reciter
+                        scope.launch {
+                            val ok = QuranRepo.saveAudio(ctx, rec, n) { savingPct = it }
+                            saved = ok && QuranRepo.audioSaved(ctx, rec, n)
+                            saveFailed = !ok
+                            savingPct = -1f
+                        }
+                    }) { Text(tr("save_audio")) }
+                    if (saveFailed) Text("  " + tr("no_internet"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
             Text(tr("reciter"), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp))

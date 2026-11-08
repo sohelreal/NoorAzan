@@ -45,6 +45,9 @@ fun prayerName(p: Int, jumuah: Boolean = false): String =
     if (p == 1 && jumuah) tr("jumuah") else tr(PRAYER_KEYS[p])
 
 private val stringsInit = run {
+    a("save_audio", "Save audio offline", "অডিও অফলাইনে সেভ করুন", "حفظ الصوت للاستماع دون إنترنت")
+    a("audio_saved", "Audio saved – plays offline", "অডিও সেভ হয়েছে – অফলাইনে চলবে", "تم حفظ الصوت – يعمل دون إنترنت")
+    a("saving", "Saving", "সেভ হচ্ছে", "جارٍ الحفظ")
     a("app_name", "Noor – Azan & Prayer", "নূর – আযান ও নামাজ", "نور – الأذان والصلاة")
     a("home", "Home", "হোম", "الرئيسية")
     a("quran", "Quran", "কুরআন", "القرآن")

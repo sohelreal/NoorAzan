@@ -40,6 +40,10 @@ class PlayerService : Service() {
     private var mp: MediaPlayer? = null
     private var generation = 0
     private var azanFallbackTried = false
+    private var queue: List<String> = emptyList()
+    private var qi = 0
+    private var usingLocal = false
+    private var localFile: File? = null
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
         override fun run() {
@@ -96,7 +100,12 @@ class PlayerService : Service() {
         PlayerState.pos = 0
         PlayerState.dur = 0
         foreground(PlayerState.title, tr("quran"), true)
-        prepare(QuranRepo.audioUrl(Prefs.reciter, s.n), null, false)
+        queue = QuranRepo.audioUrls(Prefs.reciter, s.n)
+        qi = 0
+        val lf = QuranRepo.audioFile(this, Prefs.reciter, s.n)
+        localFile = lf
+        usingLocal = QuranRepo.audioSaved(this, Prefs.reciter, s.n)
+        if (usingLocal) prepare(null, lf, false) else prepare(queue[0], null, false)
     }
 
     private fun startAzan(idx: Int) {
@@ -156,6 +165,20 @@ class PlayerService : Service() {
     }
 
     private fun onError() {
+        if (PlayerState.kind == "quran") {
+            if (usingLocal) {
+                usingLocal = false
+                localFile?.delete()
+                qi = 0
+                prepare(queue[0], null, false)
+                return
+            }
+            if (qi + 1 < queue.size) {
+                qi++
+                prepare(queue[qi], null, false)
+                return
+            }
+        }
         if (PlayerState.kind == "azan" && !azanFallbackTried) {
             azanFallbackTried = true
             prepare(null, null, true) // system alarm sound as last resort

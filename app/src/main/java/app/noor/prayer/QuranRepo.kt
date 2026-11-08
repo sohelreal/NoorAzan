@@ -26,7 +26,59 @@ object QuranRepo {
         "ar.abdulbasitmurattal" to "reciter_abdulbasit",
     )
 
-    fun audioUrl(reciter: String, n: Int) = "https://cdn.islamic.network/quran/audio-surah/128/$reciter/$n.mp3"
+    private val servers = mapOf(
+        "ar.alafasy" to listOf("https://server8.mp3quran.net/afs/%03d.mp3", "https://download.quranicaudio.com/quran/mishaari_raashid_al_3afaasy/%03d.mp3"),
+        "ar.abdurrahmaansudais" to listOf("https://server11.mp3quran.net/sds/%03d.mp3", "https://download.quranicaudio.com/quran/abdurrahmaan_as-sudays/%03d.mp3"),
+        "ar.husary" to listOf("https://server13.mp3quran.net/husr/%03d.mp3"),
+        "ar.minshawi" to listOf("https://server10.mp3quran.net/minsh/%03d.mp3"),
+        "ar.abdulbasitmurattal" to listOf("https://server7.mp3quran.net/basit/%03d.mp3"),
+    )
+
+    /** Candidate stream/download URLs for a full Surah; the player tries them in order. */
+    fun audioUrls(reciter: String, n: Int): List<String> =
+        (servers[reciter] ?: servers.getValue("ar.alafasy")).map { String.format(java.util.Locale.ENGLISH, it, n) } +
+            "https://cdn.islamic.network/quran/audio-surah/128/$reciter/$n.mp3"
+
+    fun audioFile(ctx: Context, reciter: String, n: Int) = File(ctx.filesDir, "audio/$reciter/$n.mp3")
+
+    fun audioSaved(ctx: Context, reciter: String, n: Int): Boolean = audioFile(ctx, reciter, n).let { it.exists() && it.length() > 10000 }
+
+    /** Downloads a Surah's audio to app storage so it plays offline and without buffering. */
+    suspend fun saveAudio(ctx: Context, reciter: String, n: Int, onProgress: (Float) -> Unit): Boolean = withContext(Dispatchers.IO) {
+        val dest = audioFile(ctx, reciter, n)
+        dest.parentFile?.mkdirs()
+        for (url in audioUrls(reciter, n)) {
+            val tmp = File(dest.path + ".part")
+            try {
+                val c = URL(url).openConnection() as HttpURLConnection
+                c.connectTimeout = 15000
+                c.readTimeout = 30000
+                if (c.responseCode != 200) continue
+                val total = c.contentLengthLong
+                var done = 0L
+                c.inputStream.use { i ->
+                    tmp.outputStream().use { o ->
+                        val buf = ByteArray(32 * 1024)
+                        while (true) {
+                            val r = i.read(buf)
+                            if (r < 0) break
+                            o.write(buf, 0, r)
+                            done += r
+                            if (total > 0) onProgress(done.toFloat() / total)
+                        }
+                    }
+                }
+                if (tmp.length() > 10000 && (total <= 0 || tmp.length() == total)) {
+                    dest.delete()
+                    if (tmp.renameTo(dest)) return@withContext true
+                }
+                tmp.delete()
+            } catch (e: Exception) {
+                tmp.delete()
+            }
+        }
+        false
+    }
 
     private const val RAW = """
 1|Al-Fatihah|ফাতিহা|الفاتحة|7|M
