@@ -46,6 +46,25 @@ fun SettingsScreen(onBack: () -> Unit, requestPerms: () -> Unit) {
         }
     }
 
+    var pickIdx by remember { mutableIntStateOf(-1) }
+    val custom = remember { mutableStateListOf(*Array(5) { i -> PlayerService.azanFileFor(ctx, i).let { f -> f.exists() && f.length() > 0 } }) }
+    val pickerFor = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        val idx = pickIdx
+        if (uri != null && idx in 0..4) {
+            scope.launch {
+                val ok = withContext(Dispatchers.IO) {
+                    runCatching {
+                        ctx.contentResolver.openInputStream(uri)!!.use { input ->
+                            PlayerService.azanFileFor(ctx, idx).outputStream().use { input.copyTo(it) }
+                        }
+                    }.isSuccess
+                }
+                custom[idx] = ok && PlayerService.azanFileFor(ctx, idx).length() > 0
+                message = if (ok) tr("azan_saved") else tr("no_internet")
+            }
+        }
+    }
+
     Column(Modifier.fillMaxSize()) {
         Header(tr("settings"), onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
@@ -176,6 +195,24 @@ fun SettingsScreen(onBack: () -> Unit, requestPerms: () -> Unit) {
                             hasAzanFile = false
                             message = ""
                         }) { Text(tr("remove_azan")) }
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                Text(tr("per_prayer_azan"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(tr("per_prayer_hint"), style = MaterialTheme.typography.bodySmall)
+                PRAYER_KEYS.forEachIndexed { i, k ->
+                    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(tr(k), Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                            Text(if (custom[i]) tr("custom_azan") else tr("default_azan"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            OutlinedButton(onClick = { pickIdx = i; pickerFor.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text(tr("choose_file")) }
+                            OutlinedButton(onClick = { PlayerService.testAzan(ctx, i) }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text(tr("test_azan")) }
+                            if (custom[i]) {
+                                TextButton(onClick = { PlayerService.azanFileFor(ctx, i).delete(); custom[i] = false }) { Text(tr("remove_azan")) }
+                            }
+                        }
                     }
                 }
                 if (message.isNotEmpty()) Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)

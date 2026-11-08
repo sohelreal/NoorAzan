@@ -118,7 +118,8 @@ class PlayerService : Service() {
         PlayerState.playing = false
         azanFallbackTried = false
         foreground(PlayerState.title, tr("prayer_times"), false)
-        val f = azanFile(this)
+        val custom = azanFileFor(this, idx.coerceIn(0, 4))
+        val f = if (custom.exists() && custom.length() > 0) custom else azanFile(this)
         if (f.exists() && f.length() > 0) prepare(null, f, true)
         else prepare(Prefs.azanUrl, null, true)
     }
@@ -234,12 +235,15 @@ class PlayerService : Service() {
 
         fun azanFile(ctx: Context) = File(ctx.filesDir, "azan.mp3")
 
+        /** Optional per-prayer Azan chosen by the user (0 Fajr .. 4 Isha). */
+        fun azanFileFor(ctx: Context, idx: Int) = File(ctx.filesDir, "azan_$idx.mp3")
+
         fun playSurah(ctx: Context, n: Int) {
             ctx.startForegroundService(Intent(ctx, PlayerService::class.java).setAction(ACTION_QURAN).putExtra("surah", n))
         }
 
-        fun testAzan(ctx: Context) {
-            ctx.startForegroundService(Intent(ctx, PlayerService::class.java).setAction(ACTION_AZAN).putExtra("idx", 0))
+        fun testAzan(ctx: Context, idx: Int = 0) {
+            ctx.startForegroundService(Intent(ctx, PlayerService::class.java).setAction(ACTION_AZAN).putExtra("idx", idx))
         }
 
         fun toggle(ctx: Context) {
