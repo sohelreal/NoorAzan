@@ -27,6 +27,7 @@ object Prefs {
     var place by mutableStateOf("")
     var located by mutableStateOf(false)
     var hijriOffset by mutableIntStateOf(0)
+    var compassOffset by mutableIntStateOf(0)
     var azanMode by mutableIntStateOf(0) // 0 azan audio, 1 notification sound, 2 silent
     var use24 by mutableStateOf(false)
     var showTrans by mutableStateOf(true)
@@ -59,6 +60,7 @@ object Prefs {
         place = s.getString("place", "") ?: ""
         located = s.getBoolean("located", false)
         hijriOffset = s.getInt("hijriOffset", 0)
+        compassOffset = s.getInt("compassOffset", 0)
         azanMode = s.getInt("azanMode", 0)
         use24 = s.getBoolean("use24", false)
         showTrans = s.getBoolean("showTrans", true)
@@ -87,6 +89,7 @@ object Prefs {
             .putString("place", place)
             .putBoolean("located", located)
             .putInt("hijriOffset", hijriOffset)
+            .putInt("compassOffset", compassOffset)
             .putInt("azanMode", azanMode)
             .putBoolean("use24", use24)
             .putBoolean("showTrans", showTrans)

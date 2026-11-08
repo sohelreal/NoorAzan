@@ -72,7 +72,7 @@ fun QiblaScreen() {
                     tmp
                 }
                 SensorManager.getOrientation(m, ori)
-                val az = Math.toDegrees(ori[0].toDouble()).toFloat() + decl
+                val az = Math.toDegrees(ori[0].toDouble()).toFloat() + decl + Prefs.compassOffset
                 val r = Math.toRadians(az.toDouble())
                 val cx = cos(r).toFloat()
                 val cy = sin(r).toFloat()
@@ -186,6 +186,14 @@ fun QiblaScreen() {
                 FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text(tr("compass_auto")) })
                 FilterChip(selected = mode == 1, onClick = { mode = 1 }, label = { Text(tr("compass_alt")) })
             }
+            Spacer(Modifier.height(8.dp))
+            Text(tr("compass_fix") + ": " + nd((if (Prefs.compassOffset > 0) "+" else "") + "${Prefs.compassOffset}°"), style = MaterialTheme.typography.labelLarge)
+            Slider(
+                value = Prefs.compassOffset.toFloat(),
+                onValueChange = { v -> Prefs.update { compassOffset = v.toInt() } },
+                valueRange = -180f..180f
+            )
+            Text(tr("compass_fix_hint"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))
             Text(tr("keep_flat"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             if (!Prefs.located) {

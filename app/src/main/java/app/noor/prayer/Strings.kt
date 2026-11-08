@@ -56,6 +56,8 @@ private val stringsInit = run {
     a("per_prayer_hint", "Choose an audio file (mp3, m4a, ogg) from your phone's Files or Downloads for each prayer, e.g. a different Fajr Azan. Prayers without their own file use the default Azan above.", "ফোনের ফাইল/ডাউনলোড থেকে প্রতিটি ওয়াক্তের জন্য অডিও ফাইল (mp3, m4a, ogg) বেছে নিন, যেমন ফজরের আলাদা আযান। নিজস্ব ফাইল না থাকলে উপরের ডিফল্ট আযান বাজবে।", "اختر ملف صوت (mp3, m4a, ogg) من ملفات هاتفك لكل صلاة، مثل أذان خاص بالفجر. الصلوات بلا ملف خاص تستخدم الأذان الافتراضي أعلاه.")
     a("custom_azan", "Your file", "আপনার ফাইল", "ملفك")
     a("default_azan", "Default Azan", "ডিফল্ট আযান", "الأذان الافتراضي")
+    a("compass_fix", "Compass correction", "কম্পাস সংশোধন", "تصحيح البوصلة")
+    a("compass_fix_hint", "If the \"N\" does not match true north (check with another compass or a map), slide until it does. Saved on your phone.", "\"N\" আসল উত্তরের সাথে না মিললে (অন্য কম্পাস বা ম্যাপ দেখে) স্লাইড করে ঠিক করুন। ফোনে সেভ থাকবে।", "إذا لم يطابق \"N\" الشمال الحقيقي (قارن ببوصلة أخرى أو خريطة) حرّك الشريط حتى يتطابق. يُحفظ على هاتفك.")
     a("app_name", "Noor – Azan & Prayer", "নূর – আযান ও নামাজ", "نور – الأذان والصلاة")
     a("home", "Home", "হোম", "الرئيسية")
     a("quran", "Quran", "কুরআন", "القرآن")
