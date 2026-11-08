@@ -23,6 +23,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v3
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       # Debug first: it also creates the debug keystore used to sign the release APK.
       - name: Accept SDK licenses (preinstalled SDK on the runner)
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
