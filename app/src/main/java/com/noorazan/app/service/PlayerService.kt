@@ -74,12 +74,12 @@ class PlayerService : Service() {
 
         startForeground(NOTIFICATION_ID, notification)
 
-        requestAudioFocusAndPlay()
+        requestAudioFocusAndPlay(prayerName)
 
         return START_NOT_STICKY
     }
 
-    private fun requestAudioFocusAndPlay() {
+    private fun requestAudioFocusAndPlay(prayerName: String) {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -107,10 +107,12 @@ class PlayerService : Service() {
                 setAudioAttributes(audioAttributes)
                 setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
 
-                // Dynamically resolve res/raw/azan (or res/raw/adhan) without failing compilation if missing
-                val rawResId = resources.getIdentifier("azan", "raw", packageName)
-                    .takeIf { it != 0 }
-                    ?: resources.getIdentifier("adhan", "raw", packageName)
+                // Select audio based on prayer name or raw resources present
+                val resName = if (prayerName.contains("Fajr", ignoreCase = true)) "azan_fajr" else "azan"
+                var rawResId = resources.getIdentifier(resName, "raw", packageName)
+                if (rawResId == 0) {
+                    rawResId = resources.getIdentifier("azan", "raw", packageName)
+                }
 
                 if (rawResId != 0) {
                     val afd = resources.openRawResourceFd(rawResId)
