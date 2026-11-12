@@ -17,7 +17,7 @@
         android:allowBackup="true"
         android:label="NoorAzan"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+        android:theme="@style/Theme.NoorAzan">
 
         <activity
             android:name=".MainActivity"
