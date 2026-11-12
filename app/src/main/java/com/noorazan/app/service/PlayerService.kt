@@ -10,12 +10,12 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.noorazan.app.MainActivity
-import com.noorazan.app.R
 
 class PlayerService : Service() {
 
@@ -44,10 +44,9 @@ class PlayerService : Service() {
 
         val prayerName = intent?.getStringExtra("PRAYER_NAME") ?: "Prayer"
 
-        // Acquire partial wake lock so OEM battery managers don't suspend CPU during audio start
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NoorAzan::AzanWakeLock").apply {
-            acquire(5 * 60 * 1000L) // 5 min safety timeout
+            acquire(5 * 60 * 1000L)
         }
 
         val stopIntent = Intent(this, PlayerService::class.java).apply {
@@ -107,10 +106,22 @@ class PlayerService : Service() {
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(audioAttributes)
                 setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
-                // Note: Place your azan.mp3 in app/src/main/res/raw/azan.mp3
-                val afd = resources.openRawResourceFd(R.raw.azan)
-                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                afd.close()
+
+                // Dynamically resolve res/raw/azan (or res/raw/adhan) without failing compilation if missing
+                val rawResId = resources.getIdentifier("azan", "raw", packageName)
+                    .takeIf { it != 0 }
+                    ?: resources.getIdentifier("adhan", "raw", packageName)
+
+                if (rawResId != 0) {
+                    val afd = resources.openRawResourceFd(rawResId)
+                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    afd.close()
+                } else {
+                    val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    setDataSource(applicationContext, fallbackUri)
+                }
+
                 prepareAsync()
                 setOnPreparedListener {
                     start()
@@ -156,7 +167,7 @@ class PlayerService : Service() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Plays Azan audio at exact prayer times"
-                setSound(null, null) // Sound handled directly by MediaPlayer
+                setSound(null, null)
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
