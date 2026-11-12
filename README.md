@@ -1,13 +1,16 @@
-# NoorAzan v2 (Updated)
+# NoorAzan v8
 
-## Fixes Included in v2
-1. **Reliable Background Azan Audio on Non-Pixel Devices (Samsung, Xiaomi, Oppo, Vivo):**
-   - Configured `PlayerService` as a `mediaPlayback` Foreground Service with `AudioAttributes.USAGE_ALARM` and `AudioFocusRequest`.
-   - Added `PARTIAL_WAKE_LOCK` and `AlarmManager.setExactAndAllowWhileIdle()` in `AlarmScheduler.kt` to bypass aggressive OEM Doze/battery restrictions.
-   - Added `BootReceiver.kt` to restore alarms after device reboot.
-2. **Accurate Qibla Compass Across All Devices:**
-   - Added `GeomagneticField` declination correction in `PrayerCalc.kt` to align Magnetic North with True North.
-   - Added circular low-pass exponential smoothing and sensor accuracy monitoring (`SENSOR_STATUS_UNRELIABLE` calibration alerts) in `QiblaSensorManager.kt`.
+A clean, lightweight, ad-free Android Prayer & Qibla companion built with Jetpack Compose.
 
-## Setup Note
-- Place your audio file at `app/src/main/res/raw/azan.mp3` before building.
+## Key Improvements in v8
+1. **GitHub Actions CI/CD Fixed:**
+   - Configured `gradle/actions/setup-gradle@v4` with Gradle `8.5` and automatic Debug APK artifact upload (`NoorAzan-debug-apk`), eliminating missing `gradlew` wrapper failures.
+   - Added `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties` for seamless Android Studio compatibility.
+2. **Bug Fixes & Stability:**
+   - **Runtime Notification Permission:** Requests `POST_NOTIFICATIONS` on Android 13+ (`TIRAMISU`) so foreground Azan alerts appear reliably.
+   - **WakeLock & Resource Safety (`PlayerService.kt`):** Added non-reference-counted WakeLock management, `use {}` block on `AssetFileDescriptor` to prevent file descriptor leaks, and a direct Stop button in the UI.
+   - **Sensor Null-Safety (`QiblaSensorManager.kt`):** Safely guards sensor registration and ensures rotation matrix calculations only run after both accelerometer and magnetometer readings arrive.
+   - **Release Shrinking:** Enabled R8 minification and resource shrinking in `app/build.gradle.kts` to keep the APK lightweight.
+
+## Custom Azan Audio
+- Optional: Place `azan.mp3` (and optionally `azan_fajr.mp3`) inside `app/src/main/res/raw/`. If omitted, the app automatically falls back to the device's default alarm sound.

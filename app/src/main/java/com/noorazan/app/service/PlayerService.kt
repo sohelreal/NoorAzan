@@ -44,8 +44,12 @@ class PlayerService : Service() {
 
         val prayerName = intent?.getStringExtra("PRAYER_NAME") ?: "Prayer"
 
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NoorAzan::AzanWakeLock").apply {
+            setReferenceCounted(false)
             acquire(5 * 60 * 1000L)
         }
 
@@ -107,7 +111,6 @@ class PlayerService : Service() {
                 setAudioAttributes(audioAttributes)
                 setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
 
-                // Select audio based on prayer name or raw resources present
                 val resName = if (prayerName.contains("Fajr", ignoreCase = true)) "azan_fajr" else "azan"
                 var rawResId = resources.getIdentifier(resName, "raw", packageName)
                 if (rawResId == 0) {
@@ -115,9 +118,9 @@ class PlayerService : Service() {
                 }
 
                 if (rawResId != 0) {
-                    val afd = resources.openRawResourceFd(rawResId)
-                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                    afd.close()
+                    resources.openRawResourceFd(rawResId).use { afd ->
+                        setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    }
                 } else {
                     val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                         ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
@@ -144,13 +147,16 @@ class PlayerService : Service() {
 
     private fun stopAzanAndSelf() {
         try {
-            mediaPlayer?.stop()
+            if (mediaPlayer?.isPlaying == true) {
+                mediaPlayer?.stop()
+            }
             mediaPlayer?.release()
         } catch (_: Exception) {}
         mediaPlayer = null
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+            focusRequest = null
         }
 
         if (wakeLock?.isHeld == true) {

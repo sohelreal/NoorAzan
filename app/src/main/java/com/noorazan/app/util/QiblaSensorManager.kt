@@ -17,6 +17,8 @@ class QiblaSensorManager(
     private val rotationMatrix = FloatArray(9)
     private val orientation = FloatArray(3)
 
+    private var hasGravity = false
+    private var hasMagnetic = false
     private var smoothedAzimuth = 0f
     private var declination = 0f
     private var needsCalibration = false
@@ -28,8 +30,8 @@ class QiblaSensorManager(
     fun start() {
         val accel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         val magnet = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-        sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
-        sensorManager.registerListener(this, magnet, SensorManager.SENSOR_DELAY_UI)
+        accel?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+        magnet?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
     }
 
     fun stop() {
@@ -43,23 +45,22 @@ class QiblaSensorManager(
                 gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0]
                 gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1]
                 gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2]
+                hasGravity = true
             }
             Sensor.TYPE_MAGNETIC_FIELD -> {
                 geomagnetic[0] = alpha * geomagnetic[0] + (1 - alpha) * event.values[0]
                 geomagnetic[1] = alpha * geomagnetic[1] + (1 - alpha) * event.values[1]
                 geomagnetic[2] = alpha * geomagnetic[2] + (1 - alpha) * event.values[2]
+                hasMagnetic = true
             }
         }
 
-        if (SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)) {
+        if (hasGravity && hasMagnetic && SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)) {
             SensorManager.getOrientation(rotationMatrix, orientation)
             var magneticAzimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
             magneticAzimuth = (magneticAzimuth + 360f) % 360f
 
-            // Apply Magnetic Declination to obtain True North
             val trueAzimuth = (magneticAzimuth + declination + 360f) % 360f
-
-            // Smooth circular angle transitions
             smoothedAzimuth = lowPassAngle(trueAzimuth, smoothedAzimuth)
             onHeadingUpdate(smoothedAzimuth, needsCalibration)
         }
